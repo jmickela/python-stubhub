@@ -19,11 +19,11 @@ class StubHubModel(object):
 			instance.__dict__[key] = value
 		return instance
 
-	def __init__(self):
-		print 'in init'
-
+class StubHubSectionSummary(StubHubModel):
+	pass
 
 class StubHubVenue(StubHubModel):
+	# TODO: Fix properties to match stubhub names!
 	id = None
 	name = None
 	venue_info_url = None
