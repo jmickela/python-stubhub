@@ -4,9 +4,22 @@ import urllib
 
 import requests
 
+from .models import StubHubEventSearchResponse
+
 STUBHUB_PRODUCTION = 'production'
 STUBHUB_SANDBOX = 'sandbox'
-from .models import StubHubEvent
+
+
+def rest_method(url, method, headers, arguments, handler):
+	if method == 'GET':
+		ret = requests.get(url, params=arguments, headers=headers)
+
+		if ret.status_code == 200:
+			return handler(ret.json())
+		elif ret.status_code == 503:
+			# 503 errors may mean you are over your usage threshold, which is easy because the
+			# basic level only gets 10 calls per hour.
+			return None
 
 class StubHub():
 	url_production = "https://api.stubhub.com"
@@ -30,18 +43,24 @@ class StubHub():
 		elif mode == STUBHUB_SANDBOX:
 			self.url = self.url_sandbox
 
+	def rest_request(self, endpoint, method, params, response_class):
+		# TODO: Basic sanity checks, response_key should be a string, response_class should be a class...
+
+		if method.lower() == 'get':
+			response = requests.get(self.url + endpoint, params=params, headers=self.headers)
+			if response.status_code == 200:
+				json = response.json()
+				return response_class.from_dict(json)
+
+
 	# streamline this! make something a little more generic
-	def search_inventory(self, search_terms):
-		qs = urllib.urlencode(search_terms)
-		ret = requests.get("%s%s?%s" % (self.url, self.search_events_url, qs), headers=self.headers)
-		print ret.text
+	def search_events(self, params):
+		return self.rest_request(self.search_events_url, 'GET', params, StubHubEventSearchResponse)
+
+	def search_inventory(self, event_id):
+		ret = requests.get(self.url + self.search_inventory_url, params={'event_id': event_id}, headers=self.headers)
+
 		if ret.status_code == 200:
-			data = json.loads(ret.text)
-			events = []
-			for event in data['events']:
-				events.append(StubHubEvent(event))
-			return events
+			return None
 		elif ret.status_code == 503:
-			# 503 errors may mean you are over your usage threshold, which is easy because the
-			# basic level only gets 10 calls per hour.
 			return None

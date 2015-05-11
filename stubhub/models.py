@@ -122,3 +122,28 @@ class StubHubEvent(object):
 			else:
 				instance.__dict__[key] = value
 		return instance
+
+
+class StubHubEventSearchResponse(object):
+	@classmethod
+	def from_dict(cls, data):
+		"""Turns a dict into either an event, creating other classes as needed.
+
+		Args:
+			data (dict): A dict created from json returned from a call to the StubHub api.
+		"""
+		instance = cls()
+		for key, value in data.items():
+			if type(value) is dict or type(value) is list:
+				# dicts and lists should be other data types
+				# TODO: This can probably be generalized a bit
+				if key == 'events':
+					instance.events = []
+					for event in value:
+						instance.events.append(StubHubEvent.from_dict(event))
+				else:
+					# Catch anything I don't have a special case for.
+					instance.__dict__[key] = value
+			else:
+				instance.__dict__[key] = value
+		return instance
