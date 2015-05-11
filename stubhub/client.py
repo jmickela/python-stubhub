@@ -4,10 +4,12 @@ import urllib
 
 import requests
 
+from .exceptions import ThresholdLimitExceeded
 from .models import StubHubEventSearchResponse
 
 STUBHUB_PRODUCTION = 'production'
 STUBHUB_SANDBOX = 'sandbox'
+
 
 
 def rest_method(url, method, headers, arguments, handler):
@@ -45,12 +47,15 @@ class StubHub():
 
 	def rest_request(self, endpoint, method, params, response_class):
 		# TODO: Basic sanity checks, response_key should be a string, response_class should be a class...
-
+		print 'made it here'
 		if method.lower() == 'get':
 			response = requests.get(self.url + endpoint, params=params, headers=self.headers)
 			if response.status_code == 200:
 				json = response.json()
 				return response_class.from_dict(json)
+			elif response.status_code == 503:
+				# TODO: do a text search to make sure it really is a thresholdlimitexceeded exception
+				raise ThresholdLimitExceeded
 
 
 	# streamline this! make something a little more generic
