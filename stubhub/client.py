@@ -34,7 +34,7 @@ class StubHub():
 	def search_inventory(self, search_terms):
 		qs = urllib.urlencode(search_terms)
 		ret = requests.get("%s%s?%s" % (self.url, self.search_events_url, qs), headers=self.headers)
-
+		print ret.text
 		if ret.status_code == 200:
 			data = json.loads(ret.text)
 			events = []
