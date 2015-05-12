@@ -1,4 +1,5 @@
 from base64 import b64encode
+from gettext import gettext as _
 
 try: import simplejson as json
 except ImportError: import json
@@ -10,24 +11,10 @@ from .exceptions import ThresholdLimitExceeded
 from .models import StubHubEventSearchResponse
 
 
-STUBHUB_PRODUCTION = 'production'
-STUBHUB_SANDBOX = 'SANDBOX'
-
-
-def rest_method(url, method, headers, arguments, handler):
-
-
-	if method == 'GET':
-		ret = requests.get(url, params=arguments, headers=headers)
-
-		if ret.status_code == 200:
-			return handler(ret.json())
-		elif ret.status_code == 503:
-			# 503 errors may mean you are over your usage threshold, which is easy because the
-			# basic level only gets 10 calls per hour.
-			return None
-
 class StubHub():
+	STUBHUB_PRODUCTION = 'PRODUCTION'
+	STUBHUB_SANDBOX = 'SANDBOX'
+	mode = STUBHUB_SANDBOX
 	url_production = "https://api.stubhub.com"
 	url_sandbox = "https://api.stubhubsandbox.com"
 
@@ -35,8 +22,15 @@ class StubHub():
 	search_events_url = "/search/catalog/events/v2"
 	login_url = '/login'
 
-	def __init__(self, mode=STUBHUB_PRODUCTION, application_token=None):
-		self.mode = mode
+	def __init__(self, application_token, mode=None):
+		if mode is not None:
+			self.mode = mode
+		else:
+			self.mode = StubHub.STUBHUB_SANDBOX
+
+
+		if application_token is None:
+			raise(AttributeError(_('You must supply an application token.')))
 		self.application_token = application_token
 		self.headers = {
 			'Content-Type': 'application/json',
@@ -47,9 +41,9 @@ class StubHub():
 
 		self.auth_info = None  # This gets set in login()
 
-		if mode == STUBHUB_PRODUCTION:
+		if self.mode == self.STUBHUB_PRODUCTION:
 			self.url = self.url_production
-		elif mode == STUBHUB_SANDBOX:
+		elif self.mode == self.STUBHUB_SANDBOX:
 			self.url = self.url_sandbox
 
 	def login(self, key, secret, username, password, grant_type='password'):
