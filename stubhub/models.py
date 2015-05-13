@@ -124,6 +124,24 @@ class StubHubEvent(object):
 		return instance
 
 
+class StubHubSection(StubHubModel):
+	pass
+
+
+class StubHubEventSectionSearchResponse(StubHubModel):
+	errors = None
+	eventId = None  # docs say eventid, actual request is eventID, returns eventId...NICE!
+	eventDescription = None
+	section = None
+	currencyCode = None
+	isVenueScrubbed = None
+	isViewFromSectionEnabled = None
+	smallViewFromSectionUrl = None
+	mediumViewFromSectionUrl = None
+	largeViewFromSectionUrl = None
+
+
+
 class StubHubEventSearchResponse(object):
 	@classmethod
 	def from_dict(cls, data):

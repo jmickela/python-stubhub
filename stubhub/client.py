@@ -7,8 +7,8 @@ import urllib
 
 import requests
 
-from .exceptions import ThresholdLimitExceeded
-from .models import StubHubEventSearchResponse
+from .exceptions import ThresholdLimitExceeded, ConnectionError
+from .models import StubHubEventSearchResponse, StubHubEventSectionSearchResponse
 
 
 class StubHub():
@@ -21,6 +21,9 @@ class StubHub():
 	search_inventory_url = "/search/inventory/v1"
 	search_events_url = "/search/catalog/events/v2"
 	login_url = '/login'
+	search_inventory_section_summary_url = '/search/inventory/v1/sectionsummary'
+
+	user_guid = None
 
 	def __init__(self, application_token, mode=None):
 		if mode is not None:
@@ -62,15 +65,30 @@ class StubHub():
 
 		response = requests.post(self.url + self.login_url, headers=headers, data=data)
 		self.auth_info = response.json()
+		self.headers['x-stubhub-user-guid'] = response.headers['x-stubhub-user-guid']
+		# replease the auth token?
+		self.headers['Authentication'] = 'Bearer ' + self.auth_info['access_token']
 		return True
 
 
 	def rest_request(self, endpoint, method, params, response_class):
 		# TODO: Basic sanity checks, response_key should be a string, response_class should be a class...
 		if self.auth_info is not None:
-			pass #set headers from auth info
+			pass #set headers from auth info?
+
+		response = None
+
 		if method.lower() == 'get':
-			response = requests.get(self.url + endpoint, params=params, headers=self.headers)
+			exception = None
+
+			try:
+				response = requests.get(self.url + endpoint, params=params, headers=self.headers)
+			except requests.exceptions.ConnectionError as e:
+				exception = ConnectionError(_('Connection Failed: Make sure you are online and try again.'))
+
+			if exception is not None:
+				raise exception
+
 			if response.status_code == 200:
 				json = response.json()
 				return response_class.from_dict(json)
@@ -84,14 +102,18 @@ class StubHub():
 	def search_events(self, params):
 		return self.rest_request(self.search_events_url, 'GET', params, StubHubEventSearchResponse)
 
-	def search_inventory(self, event_id, start):
+	def search_inventory(self, eventid):
+		""" FIXME: This absolutely refuses to work. The error isn't the same every time even when the input is. I'm
+			wondering if this endpoint even works period.
+		"""
 		params = {
-			'eventid': event_id,
+			'eventID': eventid,
 		}
+
 		ret = requests.get(self.url + self.search_inventory_url, params=params, headers=self.headers)
 		print ret.text
 		if ret.status_code == 200:
-			print ret.text;
+			print ret.text
 		elif ret.status_code == 400:
 			pass
 			# not logged in
@@ -105,3 +127,14 @@ class StubHub():
 			#{"errors":{"error":[{"errorType":null,"errorDescription":null,"errorMessage":"A business exception [INS04] occurred: StubHub Business Error;  Incorrect event ID, or event is invalid / expired; details include: Event has expired=eventId=9198987","errorParam":null,"errorTypeId":"null"}]},"eventId":null,"totalListings":null,"totalTickets":null,"minQuantity":null,"maxQuantity":null,"mapDisplayType":null,"listing":null,"section_stats":null,"zone_stats":null,"pricingSummary":null,"listingAttributeCategorySummary":null,"deliveryTypeSummary":null,"start":null,"rows":null}
 		if ret.content.find('Threshold') != -1:
 			raise ThresholdLimitExceeded
+
+	def search_inventory_section_summary(self, eventid):
+		if eventid is None:
+			raise(AttributeError(_('You must supply an event id.')))
+
+		params = {
+		    'eventID': eventid,
+		}
+
+		return self.rest_request(self.url + self.search_inventory_section_summary_url
+									,'GET', params, StubHubEventSectionSearchResponse)
