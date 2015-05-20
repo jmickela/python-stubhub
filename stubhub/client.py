@@ -11,7 +11,7 @@ from .exceptions import ThresholdLimitExceeded, ConnectionError
 from .models import StubHubEventSearchResponse, StubHubEventSectionSearchResponse
 
 
-class StubHub():
+class StubHub(object):
 	STUBHUB_PRODUCTION = 'PRODUCTION'
 	STUBHUB_SANDBOX = 'SANDBOX'
 	mode = STUBHUB_SANDBOX
@@ -92,9 +92,16 @@ class StubHub():
 			if response.status_code == 200:
 				json = response.json()
 				return response_class.from_dict(json)
+			elif response.status_code == 401 and response.content.find('Invalid Credentials'):
+				raise AttributeError(_('Invalid Credentials'))  # TODO: change to more appropriate exception type
+			elif response.status_code == 404 and response.content.find('INS04'):
+				raise AttributeError(_('Event not found or expired.'))
+			elif response.status_code == 400 and response.content.find('INS06'):
+				raise AttributeError(_('Invalid Query String/General Error'))
 			elif response.status_code == 503:
 				# TODO: do a text search to make sure it really is a thresholdlimitexceeded exception
-				if response.content.find('Threshold') != -1:
+				# What the hell...they use two different error messages for the same thing!!
+				if response.content.find('Threshold') != -1 or response.content.find('Throttled') != -1:
 					raise ThresholdLimitExceeded
 
 
@@ -129,12 +136,21 @@ class StubHub():
 			raise ThresholdLimitExceeded
 
 	def search_inventory_section_summary(self, eventid):
+		""" Returns information about seating sections at the event. There may not be any.
+
+		WARNING: This information doesn't seem to be available in the sandbox environment, or at least isn't available
+		all the time. If you're testing in sandbox and this code isn't working as intended, it's likely because
+		you aren't getting data consistent with what you would get from the production environment.
+
+		:param eventid: The ID of the event you're getting sections for.
+		:return: a StubHubEventSectionSearchResponse object
+		"""
 		if eventid is None:
 			raise(AttributeError(_('You must supply an event id.')))
 
+		#  In some places the docs say to use eventid, they're wrong.
 		params = {
 		    'eventID': eventid,
 		}
 
-		return self.rest_request(self.url + self.search_inventory_section_summary_url
-									,'GET', params, StubHubEventSectionSearchResponse)
+		return self.rest_request(self.search_inventory_section_summary_url, 'GET', params, StubHubEventSectionSearchResponse)

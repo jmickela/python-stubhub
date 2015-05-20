@@ -1,11 +1,12 @@
+import os
 import unittest
 import responses
 
 from stubhub.client import StubHub
-from stubhub.models import StubHubModel
+from stubhub.models import StubHubModel, StubHubSectionSummary, StubHubEventSectionSearchResponse
 
 """ WARNING:
-Testing actual responses can be difficult since the basic access tier is only allowed 10 requests an hour.
+Testing actual responses can be difficult since the basic access tier is only allowed 10 requests/min.
 This means that this client has NO TESTS that test actual API interaction, only recorded responses for various
 inputs. Should StubHub modify their sandbox so that you have a much higher usage threshold this can be changed.
 """
@@ -58,27 +59,41 @@ class StubHubSearchTest(unittest.TestCase):
 	client = None
 
 	def setUp(self):
-		self.client = StubHub(application_token="some token")
+		self.client = StubHub(application_token=os.getenv('APPLICATION_TOKEN', None))
 
 	# siss = Search Inventory Section Summary
-	@responses.activate
+	#@responses.activate
 	def test_siss_no_eventid(self):
 		""" Make sure an exception is thrown if no even id is given.
 		:return: boolean Whether the test passed or failed
 		"""
-		# this shouldn't be used, but in the event that the exception isn't throw I don't want to hit the real API
-		responses.add(responses.GET, self.client.url + self.client.search_events_url,
-				body=search_events_json_response, status=200,
-				content_type='application/json')
+		# this shouldn't be used, but in the event that the exception isn't thrown I don't want to hit the real API
+		# responses.add(responses.GET, self.client.url + self.client.search_events_url,
+		# 		body=search_events_json_response, status=200,
+		# 		content_type='application/json')
 
 		with self.assertRaises(AttributeError) as context:
 			self.client.search_inventory_section_summary(None)
 		self.assertTrue('You must supply an event id.' in context.exception)
-	@responses.activate
+
+	#@responses.activate
 	def test_siss_past_eventid(self):
-		#  If you pass in an event id of an old even it should throw an exception
-		responses.add(responses.GET, self.client.url + self.client.search_events_url,
-				body=search_events_json_response, status=200,
-				content_type='application/json')
+		#  If you pass in an event id of an old event it should throw an exception
+		# responses.add(responses.GET, self.client.url + self.client.search_events_url,
+		# 		body=search_events_json_response, status=200,
+		# 		content_type='application/json')
+
+		with self.assertRaises(AttributeError) as context:
+			# pass in a known old event ID
+			self.client.search_inventory_section_summary(eventid='9198987')
+		self.assertTrue('Event not found or expired.', str(context))
+
+	def test_siss_should_pass(self):
+		# First, search for an event
+		response = self.client.search_events({'title': 'Giants'})
+
+		# Now use the first result to search for a section summary
+		section_summary = self.client.search_inventory_section_summary(response.events[0].id)
+		self.assertEqual(type(section_summary), StubHubEventSectionSearchResponse)
 
 unittest.main()
