@@ -24,76 +24,76 @@ siss_200_event_id = 9177000
 siss_200_json = '''{"errors":null,"eventId":9177000,"eventDescription":"Colorado Rockies at Los Angeles Dodgers Tickets (Friday Night Fireworks)","section":[],"currencyCode":"USD","isVenueScrubbed":true,"isViewFromSectionEnabled":true,"smallViewFromSectionUrl":"cache11.stubhubstatic.com/sectionviews/venues/744/config/154129/195x106","mediumViewFromSectionUrl":"cache11.stubhubstatic.com/sectionviews/venues/744/config/154129/500x271","largeViewFromSectionUrl":"cache11.stubhubstatic.com/sectionviews/venues/744/config/154129/1000x542"}'''
 
 
-class StubHubClientTest(unittest.TestCase):
-	def test_client_no_token(self):
-		with self.assertRaises(AttributeError) as context:
-			StubHub(None)
-		self.assertTrue('You must supply an application token.' in context.exception)
-
-	def test_sandbox_mode_url(self):
-		client = StubHub(application_token="some token", mode=StubHub.STUBHUB_SANDBOX)
-		self.assertEqual(client.url, client.url_sandbox)
-
-	def test_production_mode_url(self):
-		client = StubHub(application_token="some token", mode=StubHub.STUBHUB_PRODUCTION)
-		self.assertEqual(client.url, client.url_production)
-
-	def test_default_mode(self):
-		client = StubHub(application_token="some token")
-		self.assertEqual(client.url, client.url_sandbox)
-
-	@responses.activate
-	def test_search_result(self):
-		client = StubHub(application_token='some token')
-
-		responses.add(responses.GET, client.url + client.search_events_url,
-				body=search_events_json_response, status=200,
-				content_type='application/json')
-
-		response = client.search_events({'test': 'search'})
-		self.assertEqual(response.numFound, 281)
-		self.assertEqual(response.events[0].title, "They Might be Giants Tickets")
-		self.assertEqual(response.events[0].id, 9198987)
+# class StubHubClientTest(unittest.TestCase):
+#     def test_client_no_token(self):
+#         with self.assertRaises(AttributeError) as context:
+#             StubHub(None)
+#         self.assertTrue('You must supply an application token.' in context.exception)
+#
+#     def test_sandbox_mode_url(self):
+#         client = StubHub(application_token="some token", mode=StubHub.STUBHUB_SANDBOX)
+#         self.assertEqual(client.url, client.url_sandbox)
+#
+#     def test_production_mode_url(self):
+#         client = StubHub(application_token="some token", mode=StubHub.STUBHUB_PRODUCTION)
+#         self.assertEqual(client.url, client.url_production)
+#
+#     def test_default_mode(self):
+#         client = StubHub(application_token="some token")
+#         self.assertEqual(client.url, client.url_sandbox)
+#
+#     @responses.activate
+#     def test_search_result(self):
+#         client = StubHub(application_token=os.getenv('APPLICATION_TOKEN', None))
+#
+#         responses.add(responses.GET, client.url + client.search_events_url,
+#                 body=search_events_json_response, status=200,
+#                 content_type='application/json')
+#
+#         response = client.search_events({'test': 'search'})
+#         self.assertEqual(response.numFound, 281)
+#         self.assertEqual(response.events[0].title, "They Might be Giants Tickets")
+#         self.assertEqual(response.events[0].id, 9198987)
 
 class StubHubSearchTest(unittest.TestCase):
-	client = None
+    client = None
 
-	def setUp(self):
-		self.client = StubHub(application_token=os.getenv('APPLICATION_TOKEN', None))
+    def setUp(self):
+        self.client = StubHub(application_token=os.getenv('APPLICATION_TOKEN', None))
 
-	# siss = Search Inventory Section Summary
-	#@responses.activate
-	def test_siss_no_eventid(self):
-		""" Make sure an exception is thrown if no even id is given.
-		:return: boolean Whether the test passed or failed
-		"""
-		# this shouldn't be used, but in the event that the exception isn't thrown I don't want to hit the real API
-		# responses.add(responses.GET, self.client.url + self.client.search_events_url,
-		# 		body=search_events_json_response, status=200,
-		# 		content_type='application/json')
+    # siss = Search Inventory Section Summary
+    # @responses.activate
+    # def test_siss_no_eventid(self):
+    #     """ Make sure an exception is thrown if no even id is given.
+    #     :return: boolean Whether the test passed or failed
+    #     """
+    #     # this shouldn't be used, but in the event that the exception isn't thrown I don't want to hit the real API
+    #     # responses.add(responses.GET, self.client.url + self.client.search_events_url,
+    #     # 		body=search_events_json_response, status=200,
+    #     # 		content_type='application/json')
+    #
+    #     with self.assertRaises(AttributeError) as context:
+    #         self.client.search_inventory_section_summary(None)
+    #     self.assertTrue('You must supply an event id.' in context.exception)
+    #
+    # # @responses.activate
+    # def test_siss_past_eventid(self):
+    #     #  If you pass in an event id of an old event it should throw an exception
+    #     # responses.add(responses.GET, self.client.url + self.client.search_events_url,
+    #     # 		body=search_events_json_response, status=200,
+    #     # 		content_type='application/json')
+    #
+    #     with self.assertRaises(AttributeError) as context:
+    #         # pass in a known old event ID
+    #         self.client.search_inventory_section_summary(eventid='9198987')
+    #     self.assertTrue('Event not found or expired.', str(context))
 
-		with self.assertRaises(AttributeError) as context:
-			self.client.search_inventory_section_summary(None)
-		self.assertTrue('You must supply an event id.' in context.exception)
+    def test_siss_should_pass(self):
+        # First, search for an event
+        response = self.client.search_events({'title': 'Giants', 'status': 'Active'})
 
-	#@responses.activate
-	def test_siss_past_eventid(self):
-		#  If you pass in an event id of an old event it should throw an exception
-		# responses.add(responses.GET, self.client.url + self.client.search_events_url,
-		# 		body=search_events_json_response, status=200,
-		# 		content_type='application/json')
+        # Now use the first result to search for a section summary
+        section_summary = self.client.search_inventory_section_summary(response.events[0].id)
+        self.assertEqual(type(section_summary), StubHubEventSectionSearchResponse)
 
-		with self.assertRaises(AttributeError) as context:
-			# pass in a known old event ID
-			self.client.search_inventory_section_summary(eventid='9198987')
-		self.assertTrue('Event not found or expired.', str(context))
-
-	def test_siss_should_pass(self):
-		# First, search for an event
-		response = self.client.search_events({'title': 'Giants'})
-
-		# Now use the first result to search for a section summary
-		section_summary = self.client.search_inventory_section_summary(response.events[0].id)
-		self.assertEqual(type(section_summary), StubHubEventSectionSearchResponse)
-
-unittest.main()
+#unittest.main()

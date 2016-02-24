@@ -1,6 +1,9 @@
 class ThresholdLimitExceeded(Exception):
-	pass
+    pass
 
 
 class ConnectionError(Exception):
-	pass
+    pass
+
+class EventNotFound(Exception):
+    pass
